@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#FFF3DC" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>这排我占了！｜校园抢座小游戏</title>
+<link rel="stylesheet" href="style.css?v=37" />
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+   <div id="frame">
+    <canvas id="game" width="1040" height="742"></canvas>
+
+    <!-- ===================== 移动端虚拟摇杆（双人时左右各一根） ===================== -->
+    <div id="joystick" aria-hidden="true">
+      <div class="joy-base"></div>
+      <div class="joy-knob" id="joy-knob"></div>
+      <div class="joy-tag" id="joy-tag-1">1P</div>
+    </div>
+    <div id="joystick2" aria-hidden="true">
+      <div class="joy-base"></div>
+      <div class="joy-knob" id="joy-knob2"></div>
+      <div class="joy-tag" id="joy-tag-2">2P</div>
+    </div>
+
+    <!-- ===================== HUD =====================
+         全部信息压成「顶部一行」横排。
+         座位区从画布 y = WALL_T 开始（标准 104 / 紧凑 84），
+         顶部信息条必须整体待在这条线以上，否则会盖住正常游戏画面。 -->
+    <div id="hud" class="hidden">
+      <div class="hud-tl">
+        <div class="p-tag" id="ptag-1">1P</div>
+        <div class="sticker s-score" id="hud-score-box" title="本局得分 · 已占座位">
+          <span class="ico">🔥</span><b id="hud-score">0</b><span class="unit">分</span>
+          <span class="sep">·</span>
+          <span class="ico">💺</span><b id="hud-seats" class="n2">0</b><span class="unit">座</span>
+        </div>
+        <div class="sticker s-combo hidden" id="hud-combo"><span class="ico">⚡</span>连抢 <b id="hud-combo-n">0</b></div>
+        <div class="sticker s-best" title="历史最高分"><span class="ico">🏅</span><span class="lbl">最高</span><b id="hud-best">0</b></div>
+        <div class="skill-bar" id="skills-1">
+          <button class="skill" id="sk-1-0" type="button"><span class="sk-ico" id="sk-1-0-ico">—</span><span class="sk-key">Q</span><span class="sk-cd" id="sk-1-0-cd"></span></button>
+        </div>
+      </div>
+
+      <div class="hud-p2" id="hud-p2">
+        <div class="p-tag" id="ptag-2">2P</div>
+        <div class="sticker s-score" id="hud2-score-box" title="2P 得分 · 已占座位">
+          <span class="ico">🔥</span><b id="hud2-score">0</b><span class="unit">分</span>
+          <span class="sep">·</span>
+          <span class="ico">💺</span><b id="hud2-seats" class="n2">0</b><span class="unit">座</span>
+        </div>
+        <div class="sticker s-combo hidden" id="hud2-combo"><span class="ico">⚡</span>连抢 <b id="hud2-combo-n">0</b></div>
+        <div class="skill-bar p2" id="skills-2">
+          <button class="skill" id="sk-2-0" type="button"><span class="sk-ico" id="sk-2-0-ico">—</span><span class="sk-key">L</span><span class="sk-cd" id="sk-2-0-cd"></span></button>
+        </div>
+      </div>
+
+      <div class="hud-tr">
+        <div class="sticker s-time" id="hud-time-wrap"><span class="ico">⏰</span><span class="lbl" id="hud-time-lbl">上课还有 </span><b id="hud-time">01:30</b></div>
+      </div>
+
+      <!-- 今日任务（第三阶段）：夹在左上信息条和右上计时牌中间那条空位上。
+           做成 HTML 而不是画在画布上，是因为画布上的横幅叠两条时会顶到墙面区，
+           正好压住黑板；HTML 层永远在画布之上，不会被任何横幅盖掉。 -->
+      <div class="hud-tasks wide hidden" id="hud-tasks">
+        <div class="ht-head" id="hud-task-head">今日任务</div>
+        <div class="ht-list" id="hud-task-list"></div>
+      </div>
+    </div>
+
+    <!-- 右下角一排圆按钮：音效 / 暂停 / 退出。
+         全部只在 state 为 count / play / over 时显示（见 syncCtrlBtns），
+         开始页上不出现 —— 那时候没有「暂停」可言。 -->
+    <button id="btn-sound" class="round-btn" title="音效开关（M）" aria-label="音效开关">🔊</button>
+    <button id="btn-pause" class="round-btn ctrl-btn hidden" title="暂停 / 继续（空格）" aria-label="暂停">⏸️</button>
+    <button id="btn-quit" class="round-btn ctrl-btn hidden" title="退出本局（回到开始页）" aria-label="退出">🚪</button>
+
+    <!-- ===================== 暂停遮罩 =====================
+         只做「显隐 + 一处 state 直通」，不碰任何模拟状态：
+         PAUSED 为真时 update() 在算 dt 之后立刻 return，
+         计时不推进、NPC 与技能冷却全停、随机流一次都不掷 ——
+         所以暂停不会影响任何一局的走向，也进不了指纹。 -->
+    <div id="screen-pause" class="screen hidden">
+      <div class="card pause-card">
+        <div class="pause-ico">⏸️</div>
+        <h2 class="pause-title">先歇一会儿</h2>
+        <p class="pause-sub" id="pause-sub">比赛暂停了，计时和同学都停着。</p>
+        <div class="pause-btns">
+          <button id="btn-resume" class="big-btn">继续抢座</button>
+          <button id="btn-pause-quit" class="big-btn ghost">退出本局</button>
+        </div>
+        <p class="tip">按空格 / Esc 也可以继续</p>
+      </div>
+    </div>
+
+    <!-- ===================== 开始界面 ===================== -->
+    <div id="screen-start" class="screen">
+      <div class="card start-card">
+        <!-- 玩法规则入口（V1.6 第九阶段）。
+             刻意做成一张小贴纸、贴在开始卡自己的右上角，而不是屏幕四角：
+             紧凑版画布只有 692×468，开始卡宽 620，左右各剩 36px —— 贴屏幕角会压到卡片上。
+             贴在卡片角上则标准版/紧凑版都自动跟着卡片走，不用两套摆位。 -->
+        <button id="btn-rules" class="rules-btn" type="button" aria-label="玩法规则说明" title="玩法规则">
+          <span class="rb-ico">📖</span><span class="rb-txt">玩法</span>
+        </button>
+
+        <div class="tag-row">
+          <span class="tag">大学校园</span>
+          <span class="tag" id="start-tag">教室抢座</span>
+          <span class="tag">1 分半一局</span>
+        </div>
+        <h1 class="title">这排我占了！</h1>
+        <p class="sub" id="start-sub">上课还有 1 分半，先抢到后排再说。</p>
+
+        <div class="legend">
+          <span class="lg"><i>👑</i>黄金后排 <b>+100</b></span>
+          <span class="lg"><i>🚪</i>靠门位 <b>+60</b></span>
+          <span class="lg"><i>🔌</i>插座位 <b>+50</b></span>
+          <span class="lg"><i>❄️</i>空调位 <b>+40</b></span>
+          <span class="lg bad"><i>👨‍🏫</i><span id="lg-teacher">老师眼皮底下</span> <b>−30</b></span>
+        </div>
+
+        <div class="mode-row">
+          <button id="btn-mode-solo" class="mode-btn on" type="button">
+            <span class="mb-title">单人抢座</span>
+            <span class="mb-sub">自己抢满 1 分半</span>
+          </button>
+          <button id="btn-mode-versus" class="mode-btn vs" type="button">
+            <span class="mb-title">双人开战</span>
+            <span class="mb-sub">1P：WASD + Q　2P：方向键 + L</span>
+          </button>
+        </div>
+
+        <div class="zoom-row" id="zoom-row">
+          <label class="switch"><input type="checkbox" id="chk-zoom" /><span class="switch-track"></span></label>
+          <span class="zoom-label">镜头跟随（放大跟人）</span>
+          <span class="zoom-note">单人模式：屏幕跟着你走，看得更清</span>
+        </div>
+
+        <div class="scene-row" id="scene-row">
+          <span class="scene-tag">场景</span>
+          <button class="scene-btn on" id="btn-scene-classroom" type="button">
+            <span class="sb-title">🏫 教室</span><span class="sb-sub">平衡</span>
+          </button>
+          <button class="scene-btn" id="btn-scene-library" type="button">
+            <span class="sb-title">📚 图书馆</span><span class="sb-sub">安静值 · 三区域 · 期末周</span>
+          </button>
+          <button class="scene-btn" id="btn-scene-canteen" type="button">
+            <span class="sb-title">🍜 食堂</span><span class="sb-sub">饭菜 · 长龙 · 开饭铃</span>
+          </button>
+        </div>
+
+        <div class="vs-sub hidden" id="vs-sub">
+          <button id="btn-vs-local" class="vs-opt on" type="button">本机双人（一台手机）</button>
+          <button id="btn-vs-online" class="vs-opt" type="button">邀请好友（联网对决）</button>
+        </div>
+
+        <div class="invite-area hidden" id="invite-area">
+          <div class="inv-line">
+            <span class="inv-tag">房间号</span>
+            <span class="inv-code" id="invite-code">----</span>
+          </div>
+          <div class="inv-link" id="invite-link">正在创建房间…</div>
+          <button id="btn-copy-link" class="inv-btn" type="button">复制邀请链接</button>
+          <p class="net-status" id="net-status"></p>
+        </div>
+
+        <div class="role-area">
+          <div class="role-line">
+            <span class="rl-tag" id="rl-tag-1">角色</span>
+            <div class="role-row">
+            <button class="role-card" id="role-1-scholar" type="button"><span class="rc-ico">🎓</span><span class="rc-name">学霸</span><span class="rc-desc" title="规划型。1P 按 Q 学霸地图：把全场还没被占的高价值座位点亮，容易凑齐特殊座位任务。">规划型 · 点亮高价值座</span></button>
+            <button class="role-card" id="role-1-slacker" type="button"><span class="rc-ico">😎</span><span class="rc-name">摸鱼大师</span><span class="rc-desc" title="隐藏型。1P 按 Q 老师来了：短时间能穿过别人的占座，经过时不抢夺、不计分。">隐藏型 · 可穿别人的座</span></button>
+            <button class="role-card" id="role-1-doer" type="button"><span class="rc-ico">🏃</span><span class="rc-name">行动派</span><span class="rc-desc" title="速度型。被动：连击奖励翻倍。移动更快，1P 按 Q 冲刺：3 秒高速移动，专抢特殊座。">速度型 · 连击翻倍</span></button>
+            <button class="role-card" id="role-1-social" type="button"><span class="rc-ico">🤝</span><span class="rc-name">社交达人</span><span class="rc-desc" title="辅助型。同学不抢你附近的特殊座；1P 按 Q 求助室友：召一个室友帮你把连座占下来。">辅助型 · 室友帮占</span></button>
+            </div>
+          </div>
+          <div class="role-line hidden" id="role-line-2">
+            <span class="rl-tag">2P 角色</span>
+            <div class="role-row">
+            <button class="role-card" id="role-2-scholar" type="button"><span class="rc-ico">🎓</span><span class="rc-name">学霸</span><span class="rc-desc" title="规划型。2P 按 L 学霸地图：把全场还没被占的高价值座位点亮，容易凑齐特殊座位任务。">规划型 · 点亮高价值座</span></button>
+            <button class="role-card" id="role-2-slacker" type="button"><span class="rc-ico">😎</span><span class="rc-name">摸鱼大师</span><span class="rc-desc" title="隐藏型。2P 按 L 老师来了：短时间能穿过别人的占座，经过时不抢夺、不计分。">隐藏型 · 可穿别人的座</span></button>
+            <button class="role-card" id="role-2-doer" type="button"><span class="rc-ico">🏃</span><span class="rc-name">行动派</span><span class="rc-desc" title="速度型。被动：连击奖励翻倍。移动更快，2P 按 L 冲刺：3 秒高速移动，专抢特殊座。">速度型 · 连击翻倍</span></button>
+            <button class="role-card" id="role-2-social" type="button"><span class="rc-ico">🤝</span><span class="rc-name">社交达人</span><span class="rc-desc" title="辅助型。同学不抢你附近的特殊座；2P 按 L 求助室友：召一个室友帮你把连座占下来。">辅助型 · 室友帮占</span></button>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-start" class="big-btn">冲进去抢座！</button>
+
+        <p class="hint hint-kb">走过的座位就归你了 · 1P 按 Q、2P 按 L 放技能 · 自己的地盘随便走，别碰别人的</p>
+        <p class="hint hint-touch" id="hint-touch">拖动左下角摇杆移动 · 也可以在教室里滑动</p>
+        <p class="tip">温馨提示：现实生活请文明占座。</p>
+      </div>
+    </div>
+
+    <!-- ===================== 玩法规则说明 =====================
+         由开始页右上角那张小贴纸「📖 玩法」打开。
+         内容全部按当前源码里的真实数值写（座位分、连击窗口、惩罚、最后 15 秒），
+         改规则时这份文案要跟着改 —— 见 测试台/规则面板探针.js 的核对表。 -->
+    <div id="screen-rules" class="screen hidden">
+      <div class="card rules-card">
+        <div class="rules-head">
+          <h2 class="rules-title">玩法规则</h2>
+          <button id="btn-rules-close" class="rules-close" type="button" aria-label="关闭">✕</button>
+        </div>
+        <p class="rules-sub">1 分半，走位抢座，分高者赢</p>
+
+        <div class="rules-scroll">
+          <div class="rules-list" id="rules-list">
+            <div class="rule"><span class="r-ico">🎯</span><p class="r-txt"><b>目标</b>1 分半内抢到尽可能多的座位，最后按总分排名 —— 双人也只比分数，场上就你们两个，没有电脑对手。</p></div>
+            <div class="rule"><span class="r-ico">🕹️</span><p class="r-txt"><b>怎么走</b>单人 WASD 或方向键；双人 1P 用 WASD + Q、2P 用方向键 + L（技能键就是最后那个字母）。手机拖左下摇杆，或朝想去的方向滑一下。</p></div>
+            <div class="rule"><span class="r-ico">💺</span><p class="r-txt"><b>怎么占座</b>走过的座位就归你了；自己的地盘随便走。</p></div>
+            <div class="rule"><span class="r-ico">🚧</span><p class="r-txt"><b>别碰别人的座</b>单人撞上去直接出局；双人扣 50 分，并原地等 2 秒。</p></div>
+            <div class="rule"><span class="r-ico">🏆</span><p class="r-txt"><b>座位分值</b>👑黄金后排 +100 ｜ 🚪靠门位 +60 ｜ 🔌插座位 +50 ｜ ❄️空调位 +40 ｜ 👨‍🏫老师眼皮底下 −30。</p>
+              <!-- 阶段 8（2026-10-20 用户反馈 M）：规则页配示意图。
+                   配色全部取自 js/game.js 的 SEAT 表，和游戏里看到的座位一致 ——
+                   图上写的分值也必须与 SEAT.score 一致，改分值时这里要跟着改。 -->
+              <div class="r-fig"><svg viewBox="0 0 400 52" role="img" aria-label="座位分值示意：黄金后排加100，靠门位加60，插座位加50，空调位加40，老师眼皮底下减30">
+                <text x="37" y="10" font-size="9" fill="#8A7F6B" text-anchor="middle">黄金后排</text>
+                <rect x="2" y="15" width="70" height="28" rx="8" fill="#FFE9A8" stroke="#D9A400" stroke-width="2"/>
+                <text x="37" y="34" font-size="14" font-weight="900" fill="#7B4B00" text-anchor="middle">+100</text>
+                <text x="119" y="10" font-size="9" fill="#8A7F6B" text-anchor="middle">靠门位</text>
+                <rect x="84" y="15" width="70" height="28" rx="8" fill="#FFE0D0" stroke="#E08A5A" stroke-width="2"/>
+                <text x="119" y="34" font-size="14" font-weight="900" fill="#8A3B14" text-anchor="middle">+60</text>
+                <text x="201" y="10" font-size="9" fill="#8A7F6B" text-anchor="middle">插座位</text>
+                <rect x="166" y="15" width="70" height="28" rx="8" fill="#D9EFFF" stroke="#5FA8DC" stroke-width="2"/>
+                <text x="201" y="34" font-size="14" font-weight="900" fill="#1B4F73" text-anchor="middle">+50</text>
+                <text x="283" y="10" font-size="9" fill="#8A7F6B" text-anchor="middle">空调位</text>
+                <rect x="248" y="15" width="70" height="28" rx="8" fill="#E2F6FF" stroke="#6FC3DE" stroke-width="2"/>
+                <text x="283" y="34" font-size="14" font-weight="900" fill="#1C5A6E" text-anchor="middle">+40</text>
+                <text x="365" y="10" font-size="9" fill="#8A7F6B" text-anchor="middle">老师眼皮下</text>
+                <rect x="330" y="15" width="70" height="28" rx="8" fill="#FFD9D9" stroke="#E05A5A" stroke-width="2"/>
+                <text x="365" y="34" font-size="14" font-weight="900" fill="#8A2020" text-anchor="middle">−30</text>
+              </svg></div>
+            </div>
+            <div class="rule"><span class="r-ico">⚡</span><p class="r-txt"><b>连抢连击</b>2.6 秒内接着占座，每多连一个加得更多；断掉就从头算。</p>
+              <div class="r-fig"><svg viewBox="0 0 400 56" role="img" aria-label="连击示意：2.6秒内接着占座，每多连一格多4分，最多加48分">
+                <rect x="16" y="8" width="38" height="30" rx="8" fill="#FFF3D4" stroke="#E6CE96" stroke-width="2"/>
+                <text x="35" y="28" font-size="12" font-weight="900" fill="#2E2A26" text-anchor="middle">+10</text>
+                <text x="82" y="14" font-size="9" fill="#8A7F6B" text-anchor="middle">≤2.6s</text>
+                <line x1="58" y1="23" x2="104" y2="23" stroke="#C9BFA8" stroke-width="2"/>
+                <polygon points="104,23 96,19 96,27" fill="#C9BFA8"/>
+                <rect x="108" y="8" width="38" height="30" rx="8" fill="#FFF3D4" stroke="#E6CE96" stroke-width="2"/>
+                <text x="127" y="28" font-size="12" font-weight="900" fill="#2E2A26" text-anchor="middle">+14</text>
+                <text x="174" y="14" font-size="9" fill="#8A7F6B" text-anchor="middle">≤2.6s</text>
+                <line x1="150" y1="23" x2="196" y2="23" stroke="#C9BFA8" stroke-width="2"/>
+                <polygon points="196,23 188,19 188,27" fill="#C9BFA8"/>
+                <rect x="200" y="8" width="38" height="30" rx="8" fill="#FFE9A8" stroke="#D9A400" stroke-width="2"/>
+                <text x="219" y="28" font-size="12" font-weight="900" fill="#7B4B00" text-anchor="middle">+18</text>
+                <text x="262" y="20" font-size="10" font-weight="700" fill="#2E2A26">每多连一格 +4</text>
+                <text x="262" y="34" font-size="9" fill="#8A7F6B">最多 +48（连到第 13 格封顶）</text>
+              </svg></div>
+            </div>
+            <div class="rule"><span class="r-ico">📋</span><p class="r-txt"><b>任务与事件</b>左上角那张今日任务是单人专属。老师巡视、管理员清理、下课铃、期末周都会来打断你。</p></div>
+            <!-- 阶段 8 新增：原来「管理员清理」只在上面一句话里带过，
+                 玩家根本不知道「橙框 = 3 秒后这片要没」。而这正是本轮的核心机制，
+                 也是验收指标「预告出现后玩家会主动改路线」的前提 —— 说不清就不可能去。 -->
+            <div class="rule"><span class="r-ico">🧹</span><p class="r-txt"><b>管理员清理</b>第 30 秒和第 60 秒各来一次。提前 3 秒，画面会用<b>橙色大框</b>圈出一整片 5×5 的座位，框上写着倒计时；3 秒后这片座位<b>全部清空</b>，谁先跑进去就归谁。学霸能提前 7 秒看到紫色的「学霸预判」框。</p>
+              <div class="r-fig"><svg viewBox="0 0 400 56" role="img" aria-label="清理时间轴：一局90秒，第30秒和第60秒各清理一次，每次提前3秒出现橙色预告框">
+                <line x1="14" y1="26" x2="386" y2="26" stroke="#E6CE96" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="14" cy="26" r="3.5" fill="#C9BFA8"/>
+                <circle cx="138" cy="26" r="6.5" fill="#FF7A2E"/>
+                <circle cx="262" cy="26" r="6.5" fill="#FF7A2E"/>
+                <circle cx="386" cy="26" r="3.5" fill="#C9BFA8"/>
+                <text x="14" y="45" font-size="9" fill="#8A7F6B" text-anchor="middle">0</text>
+                <text x="138" y="45" font-size="10" font-weight="900" fill="#C2410C" text-anchor="middle">30 秒</text>
+                <text x="262" y="45" font-size="10" font-weight="900" fill="#C2410C" text-anchor="middle">60 秒</text>
+                <text x="386" y="45" font-size="9" fill="#8A7F6B" text-anchor="middle">90 秒</text>
+                <rect x="100" y="4" width="76" height="15" rx="7.5" fill="#FF7A2E"/>
+                <text x="138" y="15" font-size="9" font-weight="900" fill="#FFFFFF" text-anchor="middle">提前 3 秒橙框</text>
+                <rect x="224" y="4" width="76" height="15" rx="7.5" fill="#FF7A2E"/>
+                <text x="262" y="15" font-size="9" font-weight="900" fill="#FFFFFF" text-anchor="middle">提前 3 秒橙框</text>
+              </svg></div>
+            </div>
+            <div class="rule"><span class="r-ico">🎓</span><p class="r-txt"><b>角色与技能</b>开局挑一个角色，1P 按 Q、2P 按 L 放招牌技能。每个角色只有一个招牌技能，冷却好了就能再放。</p>
+              <div class="r-fig"><svg viewBox="0 0 400 52" role="img" aria-label="四个角色的招牌技能：学霸用学霸地图，摸鱼大师用老师来了，行动派用冲刺，社交达人用求助室友">
+                <rect x="2" y="6" width="92" height="38" rx="9" fill="#F3EEFF" stroke="#7B5BD6" stroke-width="2"/>
+                <text x="48" y="22" font-size="9" fill="#5B3FB0" text-anchor="middle">学霸</text>
+                <text x="48" y="36" font-size="11" font-weight="900" fill="#3A2670" text-anchor="middle">学霸地图</text>
+                <rect x="104" y="6" width="92" height="38" rx="9" fill="#EAF7F3" stroke="#2FA88C" stroke-width="2"/>
+                <text x="150" y="22" font-size="9" fill="#1B6B58" text-anchor="middle">摸鱼大师</text>
+                <text x="150" y="36" font-size="11" font-weight="900" fill="#0F4A3D" text-anchor="middle">老师来了</text>
+                <rect x="206" y="6" width="92" height="38" rx="9" fill="#FFF1E2" stroke="#E08A3C" stroke-width="2"/>
+                <text x="252" y="22" font-size="9" fill="#8A4A10" text-anchor="middle">行动派</text>
+                <text x="252" y="36" font-size="11" font-weight="900" fill="#5E3008" text-anchor="middle">冲刺</text>
+                <rect x="308" y="6" width="90" height="38" rx="9" fill="#E9F3FF" stroke="#5A8FD0" stroke-width="2"/>
+                <text x="353" y="22" font-size="9" fill="#2A5480" text-anchor="middle">社交达人</text>
+                <text x="353" y="36" font-size="11" font-weight="900" fill="#16375A" text-anchor="middle">求助室友</text>
+              </svg></div>
+            </div>
+            <div class="rule"><span class="r-ico">🏫</span><p class="r-txt"><b>三种场景</b>教室：平衡。图书馆：安静区座位 1.4 倍分，但在里面走动会掉安静值，掉太低会被管理员请出去。食堂：抢热门菜、排长队，开饭铃一响全场加速。</p></div>
+            <div class="rule"><span class="r-ico">⏰</span><p class="r-txt"><b>收尾</b>双人最后 15 秒进入高潮；谁的分数高谁赢。</p></div>
+          </div>
+          <!-- 滚动提示：紧凑版装不下时列表自己滚，但 Chrome 的滚动条是**覆盖式**的
+               （不占宽度、平时不显示）→ 光看截图发现不了还能往下滚。
+               这一条由 JS 按「还有没有更多」显隐，见 syncRulesMore()。 -->
+          <div class="rules-more" id="rules-more">向下还有更多 ↓</div>
+        </div>
+
+        <button id="btn-rules-ok" class="big-btn rules-ok" type="button">知道了，开抢！</button>
+      </div>
+    </div>
+
+    <!-- ===================== 倒计时 ===================== -->
+    <div id="screen-count" class="screen hidden">
+      <div class="count-wrap">
+        <div class="count-title" id="count-title">距离上课还有……</div>
+        <div class="count-num" id="count-num">3</div>
+      </div>
+    </div>
+
+    <!-- ===================== 结算 ===================== -->
+    <div id="screen-over" class="screen hidden">
+      <div class="card over-card">
+        <div class="over-reason" id="over-reason">上课铃响了，老师进来了</div>
+
+        <!-- 单人结算（与 V1 完全一致） -->
+        <div id="over-solo">
+          <h1 class="over-title">没位置了！</h1>
+          <h2 class="over-sub">本节课抢座战绩</h2>
+
+          <div class="stats">
+            <div class="stat"><span class="stat-n" id="st-seats">0</span><span class="stat-l">占领座位</span></div>
+            <div class="stat"><span class="stat-n" id="st-special">0</span><span class="stat-l">特殊座位</span></div>
+            <div class="stat"><span class="stat-n" id="st-wins">0</span><span class="stat-l">抢赢同学</span></div>
+            <div class="stat"><span class="stat-n" id="st-block">0</span><span class="stat-l">封锁同学</span></div>
+            <div class="stat"><span class="stat-n" id="st-combo">0</span><span class="stat-l">最高连续占座</span></div>
+          </div>
+
+          <div class="total">总分 <b id="st-score">0</b></div>
+          <div class="over-highlight hidden" id="over-highlight"></div>
+          <div class="over-tasks" id="over-tasks"></div>
+          <div class="over-titles" id="over-titles"></div>
+          <div class="over-ach hidden" id="over-ach"></div>
+          <div class="over-eval" id="over-eval">“……”</div>
+          <div class="over-best" id="over-best"></div>
+
+          <div class="over-btns">
+            <button id="btn-restart" class="big-btn">再抢一节</button>
+            <button id="btn-restart-role" class="big-btn ghost">换个角色</button>
+          </div>
+          <p class="tip">按 Enter / 空格 也可以重开</p>
+        </div>
+
+        <!-- 双人对战报告 -->
+        <div id="over-versus" class="hidden">
+          <h1 class="over-title vs-title" id="vs-title">1P 抢赢了！</h1>
+          <h2 class="over-sub">本局对战报告</h2>
+
+          <div class="vs-grid">
+            <div class="vs-col" id="vs-col-1">
+              <div class="vs-name">1P</div>
+              <div class="vs-line"><span>占领座位</span><b id="vs-seats-1">0</b></div>
+              <div class="vs-line"><span>特殊座位</span><b id="vs-special-1">0</b></div>
+              <div class="vs-line"><span>总分</span><b id="vs-score-1">0</b></div>
+              <div class="vs-line"><span>碰撞次数</span><b id="vs-pen-1">0</b></div>
+              <div class="vs-line"><span>最高连击</span><b id="vs-combo-1">0</b></div>
+              <div class="vs-line"><span>封锁对手</span><b id="vs-block-1">0</b></div>
+              <div class="vs-line"><span>抢赢对手</span><b id="vs-win-1">0</b></div>
+            </div>
+            <div class="vs-col" id="vs-col-2">
+              <div class="vs-name">2P</div>
+              <div class="vs-line"><span>占领座位</span><b id="vs-seats-2">0</b></div>
+              <div class="vs-line"><span>特殊座位</span><b id="vs-special-2">0</b></div>
+              <div class="vs-line"><span>总分</span><b id="vs-score-2">0</b></div>
+              <div class="vs-line"><span>碰撞次数</span><b id="vs-pen-2">0</b></div>
+              <div class="vs-line"><span>最高连击</span><b id="vs-combo-2">0</b></div>
+              <div class="vs-line"><span>封锁对手</span><b id="vs-block-2">0</b></div>
+              <div class="vs-line"><span>抢赢对手</span><b id="vs-win-2">0</b></div>
+            </div>
+          </div>
+
+          <div class="over-eval" id="vs-eval">“……”</div>
+
+          <button id="btn-restart-vs" class="big-btn">再来一局</button>
+          <p class="tip">按 Enter / 空格 也可以重开</p>
+        </div>
+      </div>
+    </div>
+   </div>
+  </div>
+</div>
+
+<noscript>
+  <p style="font:16px/1.8 sans-serif;padding:40px;text-align:center">
+    这个抢座小游戏需要开启 JavaScript 才能运行。
+  </p>
+</noscript>
+
+<!-- 手机竖屏时提示横屏 -->
+<div id="rotate-hint">
+  <div class="rh-card">
+    <span class="rh-ico">&#128241;</span>
+    <p class="rh-title">横屏才抢得痛快</p>
+    <p class="rh-sub">这排座位有点宽，竖着看不全。</p>
+    <button id="btn-rotate" class="rh-btn" type="button">一键横屏</button>
+    <p class="rh-tip" id="rotate-tip">会自动进入全屏并锁定横屏</p>
+  </div>
+</div>
+
+<script src="js/peerjs.min.js?v=37"></script>
+<script src="js/net.js?v=37"></script>
+<script src="js/audio.js?v=37"></script>
+<script src="js/game.js?v=37"></script>
+</body>
+</html>

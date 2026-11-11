@@ -1,0 +1,1756 @@
+/* ============================================================
+ * 《这排我占了！》校园抢座小游戏 — 界面样式
+ * 风格：年轻校园插画 + 手账贴纸 + 轻度卡通
+ * ============================================================ */
+
+:root {
+  --font: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Hiragino Sans GB",
+          "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ink: #2E2A26;
+  --ink-2: #6B6152;
+  --paper: #FFF8EC;
+  --cream: #FFF3DC;
+  --yellow: #FFC93C;
+  --yellow-2: #FFB300;
+  --coral: #FF7A55;
+  --coral-2: #EE5A31;
+  --teal: #2EC4B6;
+  --sky: #4D96FF;
+  --pink: #FF9EC4;
+  --line: #2E2A26;
+  --shadow: 0 4px 0 rgba(46, 42, 38, .22);
+  --radius: 16px;
+
+  /* ==================== 字号规范（第九阶段 P1-7，手册 §十五） ====================
+   * 手册要求「建立简单设计规范…不要每个模块自己选择字体大小」。本项目分两条梯队：
+   *
+   *   ① 画布内文字 —— 由 game.js 的 FONT_S 表统一管理，六档角色：一级标题 / 二级标题 /
+   *      普通 HUD / 任务文字 / 警告文字 / 奖励文字。画布坐标与 #frame 里的 CSS px 是
+   *      同一个空间（标准版 S36(v)=v，紧凑版 0.778v），所以两边字号可以直接比大小。
+   *   ② 界面文字   —— 就是下面这套，管开始页 / 结算页 / 对战报告 / 倒计时 / 角色卡 /
+   *      技能栏等 DOM 元素。
+   *
+   * 界面梯队按「档位」命名而不是按「角色」：同一档会被多个角色复用（12px 既是贴纸单位
+   * 也是成就胶囊），硬按角色命名会得到 70 多个令牌，反而不成规范。每档都注明了典型用途，
+   * 新模块**先找用途最接近的那一档**，不要自己写像素值。
+   *
+   * 有 3 处刻意保留相对单位（.ht-main .ht-row 1.04em / .ht-row.sub .92em /
+   * .hud-tasks.compact .ht-row.sub .9em）—— 它们的语义就是「在父级基础上再收一档」，
+   * 用固定令牌反而写不出来。
+   *
+   * 紧凑版（#stage.compact）不另设令牌：它复用同一套档位，只是换到更小的一档，
+   * 这样「标准版用哪档、紧凑版用哪档」的对应关系在 CSS 里一眼可见。 */
+
+  --fs-micro:         9px;    /* 微字：按键角标、角色卡描述 */
+  --fs-caption:       10px;   /* 图注：数据格标签、成就行、场景副标题、紧凑版贴纸 */
+  --fs-note:          11px;   /* 注释：紧凑任务面板、缩放说明、邀请链接 */
+  --fs-label:         12px;   /* 标签：贴纸单位/说明、成就胶囊、角色行标签、最高分 */
+  --fs-body:          13px;   /* 正文：对战行、结算理由、任务结果、称号胶囊 */
+  --fs-body-l:        14px;   /* 正文（大）：提示句、场景名、任务行、邀请按钮 */
+  --fs-lead:          15px;   /* 导语：贴纸主正文、缩放标题、新纪录 */
+  --fs-lead-l:        16px;   /* 导语（大）：数据格数值、评价框、任务图标 */
+  --fs-strong:        17px;   /* 强调：贴纸图标、说明段、高光主句、冷却数字 */
+  --fs-num:           19px;   /* 数字（小）：对战数值、总分标签、角色图标 */
+  --fs-num-l:         20px;   /* 数字：贴纸主数字、圆形按钮 */
+  --fs-num-xl:        21px;   /* 数字（大）：计时数字、模式标题、技能图标 */
+  --fs-num-2xl:       23px;   /* 数字（特大）：结算页按钮 */
+  --fs-btn:           26px;   /* 主按钮：开始页「开始抢座」 */
+  --fs-code:          27px;   /* 邀请码 */
+  --fs-stat:          30px;   /* 统计数值 / 倒计时标题 */
+  --fs-total-trim:    40px;   /* 总分（结算卡瘦身档） */
+  --fs-total:         44px;   /* 总分 / 结算页标题瘦身档 */
+  --fs-h-vs:          52px;   /* 对战报告标题 / 旋转提示图标 */
+  --fs-h-start:       62px;   /* 开始页主标题 */
+  --fs-h-over:        66px;   /* 结算页主标题 */
+  --fs-count:         190px;  /* 倒计时数字 */
+  --fs-count-go:      210px;  /* 倒计时「开始！」 */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 201, 60, .40), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(46, 196, 182, .32), transparent 46%),
+    radial-gradient(circle at 78% 12%, rgba(255, 158, 196, .30), transparent 38%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.55) 0 14px, rgba(255,255,255,.28) 14px 28px),
+    #FFF3DC;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* #app 只作为容器，不参与布局——真正的定位交给 #stage */
+#app { display: contents; }
+
+/* 用 position:fixed + inset:0 + margin:auto 做居中。
+   这样居中参照的是「视口」本身，不受 body / document 尺寸计算的影响，
+   比 flex 居中稳得多（flex 居中在文档尺寸算错时会把画面顶出可视区）。
+   宽高由 JS 按真实可视区域写进来。 */
+#stage {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: 1040px;
+  height: 742px;
+  border-radius: 26px;
+  overflow: hidden;
+  background: #FDF4E3;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    0 0 0 5px #FFFFFF,
+    0 0 0 9px var(--ink),
+    0 22px 46px rgba(60, 44, 20, .28);
+}
+
+/* ==================== 移动端虚拟摇杆 ==================== */
+
+#joystick,
+#joystick2 {
+  position: absolute;
+  bottom: 18px;
+  /* 摇杆保持固定的「屏幕尺寸」，不随游戏画面一起缩放，拇指才按得准。
+     但固定 132px 在小屏手机上会盖住左下角约 1/3 的座位区：紧凑画布 692×468 里
+     132 屏幕像素 ≈ 173 逻辑像素 = 画布高度的 37%，玩家走到左下角时拇指和摇杆
+     会同时盖住玩家自己。所以加一个 26vmin 的上限 —— 844×390 的手机上约 101px，
+     大屏仍然是原来的 132px。 */
+  width: min(132px, 26vmin);
+  height: min(132px, 26vmin);
+  display: none;
+  z-index: 26;
+  touch-action: none;
+  transform: scale(calc(1 / var(--fit, 1)));
+}
+
+#joystick  { left: 20px;  transform-origin: bottom left; }
+#joystick2 { right: 20px; transform-origin: bottom right; }
+
+/* 手指按下时把底座压淡：拇指本来就盖住了那块，底座再实心就彻底看不见底下的座位了。
+   松手立刻恢复，不影响「不拖动时看得清摇杆位置」。 */
+#joystick.drag .joy-base,
+#joystick2.drag .joy-base {
+  background: rgba(255, 255, 255, .13);
+  border-color: rgba(46, 42, 38, .17);
+}
+#joystick.drag .joy-base::before,
+#joystick.drag .joy-base::after,
+#joystick2.drag .joy-base::before,
+#joystick2.drag .joy-base::after {
+  background: rgba(46, 42, 38, .08);
+}
+
+#stage.touch #joystick { display: block; }
+/* 右摇杆只在双人模式出现 */
+#stage.touch.versus #joystick2 { display: block; }
+
+.joy-tag {
+  position: absolute;
+  left: 50%;
+  bottom: -22px;
+  transform: translateX(-50%);
+  font-size: var(--fs-label);
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: rgba(46, 42, 38, .5);
+  pointer-events: none;
+}
+#joystick2 .joy-tag { color: rgba(21, 101, 192, .6); }
+
+.joy-base {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .30);
+  border: 3px solid rgba(46, 42, 38, .30);
+  box-shadow: inset 0 4px 16px rgba(46, 42, 38, .10);
+}
+
+.joy-base::before,
+.joy-base::after {
+  content: "";
+  position: absolute;
+  background: rgba(46, 42, 38, .14);
+  border-radius: 2px;
+}
+.joy-base::before { left: 50%; top: 13%; width: 2px; height: 74%; margin-left: -1px; }
+.joy-base::after { top: 50%; left: 13%; height: 2px; width: 74%; margin-top: -1px; }
+
+.joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* 跟着底座一起缩：原来写死 62px，底座一旦用 min(132px, 26vmin) 变小，
+     旋钮就会相对变大、盖住整个底座。62/132 ≈ 47%。 */
+  width: 47%;
+  height: 47%;
+  margin: -23.5% 0 0 -23.5%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFEFC0, #FFC93C 58%, #E8A600);
+  border: 3px solid rgba(46, 42, 38, .55);
+  box-shadow: 0 4px 0 rgba(46, 42, 38, .20), 0 6px 14px rgba(120, 80, 0, .28);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* ---------- 触摸设备 UI 布局：顶部信息 + 底部控制区 ---------- */
+
+#stage.touch .hud-tl { top: 14px; left: 16px; gap: 5px; }
+#stage.touch .hud-tr { top: 14px; right: 16px; }
+
+#stage.touch .sticker {
+  font-size: var(--fs-body);
+  padding: 5px 10px;
+  border-width: 2px;
+  gap: 4px;
+}
+#stage.touch .sticker b { font-size: var(--fs-strong); }
+#stage.touch .s-time b { font-size: var(--fs-num); }
+#stage.touch .s-best b { font-size: var(--fs-lead-l); }
+/* 手机上横向空间只够数字，文字标签一律收掉（图标已经能说明是什么） */
+#stage.touch .sticker .unit { display: none; }
+#stage.touch .sticker .lbl { display: none; }
+
+/* ---------- 今日任务面板（V1.5 第三阶段） ----------
+ * 卡在左上信息条与右上计时牌之间的空位上（位置由 layoutTaskPanel 按画布版式切换）。
+ * 顶部信息条必须整体待在 y = WALL_T 以上，这块面板也一样。 */
+.hud-tasks {
+  position: absolute;
+  /* 接近不透明：面板会压到墙上的「课程表」便签，半透明的话白底会透出来显脏 */
+  background: rgba(24, 58, 48, .96);
+  border: 2px solid rgba(255, 255, 255, .30);
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .16);
+  color: #EAF7EF;
+  font-weight: 800;
+  text-align: left;
+}
+.hud-tasks.hidden { display: none; }
+#stage.versus .hud-tasks { display: none; }   /* 任务系统是单人专属 */
+
+/* 宽度 196：右边界 786，正好让开墙上「课程表」便签（从 x≈788 开始） */
+.hud-tasks.wide { left: 590px; top: 12px; width: 196px; padding: 5px 9px 5px; font-size: var(--fs-note); }
+.hud-tasks.compact { left: 424px; top: 14px; width: 142px; padding: 4px 7px 4px; font-size: var(--fs-note); }
+
+.ht-head {
+  font-size: var(--fs-caption);
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, .5);
+  margin-bottom: 2px;
+}
+.hud-tasks.compact .ht-head { font-size: var(--fs-micro); letter-spacing: 1px; margin-bottom: 1px; }
+
+.ht-row { display: flex; align-items: center; gap: 5px; line-height: 1.32; white-space: nowrap; }
+.ht-row .ht-ico { font-size: var(--fs-body); line-height: 1; flex: none; }
+.ht-row .ht-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ht-row .ht-res { flex: none; color: rgba(255, 255, 255, .74); font-variant-numeric: tabular-nums; }
+
+.hud-tasks.compact .ht-row { gap: 4px; line-height: 1.26; }
+.hud-tasks.compact .ht-row .ht-ico { font-size: var(--fs-note); }
+/* 手机上横向空间只够短名，任务名用 JS 的 short 版渲染 */
+.hud-tasks.compact .ht-row .ht-res { font-size: var(--fs-caption); }
+
+.ht-row.done { color: #9DF7B8; }
+.ht-row.done .ht-name { text-decoration: line-through; }
+.ht-row.done .ht-res { color: #7BF5A0; }
+
+/* ---------- 第九阶段 P1-1：面板只画「1 主 + 1 次」 ----------
+ * 文档 §四：「始终最多显示 1 个当前主任务 + 1 个次任务」，并给了 ■■■□ 3/4 的进度样式。
+ * 主任务用满字号 + 一条真进度条，次任务压一档做层级区分，被折叠的条数用一行小字交代。 */
+.ht-main { margin-bottom: 1px; }
+.ht-main .ht-row { font-size: 1.04em; }
+
+.ht-bar {
+  height: 4px;
+  margin: 2px 0 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .18);
+  overflow: hidden;
+}
+.ht-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7BF5A0, #FFE07A);
+  transition: width .25s ease;
+}
+.ht-main .ht-row.done + .ht-bar i { background: #7BF5A0; }
+
+.ht-row.sub { opacity: .74; font-size: .92em; }
+.hud-tasks.compact .ht-row.sub { font-size: .9em; }
+
+/* 「还有 N 个待办」写在标题行上（见 syncTaskPanel 的注释）——
+   面板高度是硬约束，多一行就压座位区。所以标题行必须单行不折。 */
+.ht-head { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- 双人模式：1P 左上、2P 右上、计时回到顶部中央 ---------- */
+
+.hud-p2 {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: none;
+  flex-direction: row-reverse;   /* 镜像 1P，标签靠外 */
+  gap: 6px;
+  align-items: center;
+}
+#stage.versus .hud-p2 { display: flex; }
+
+/* 计时从底部中央挪到顶部中央：
+ * 底部是座位区（y > WALL_T），放那儿一样会挡住画面。 */
+#stage.versus .hud-tr {
+  top: 12px;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+/* 双人时计时是两人共用的，收成顶部正中的一块小计时牌：
+ * 左右两侧要各塞下 1P / 2P 的「分数+座位+技能栏」，
+ * 手机上横向空间是真的不够，标签和图标都收掉只留数字。 */
+#stage.versus .s-time { padding: 5px 11px; }
+#stage.versus .s-time .ico { display: none; }
+#stage.versus .s-time .lbl { display: none; }
+#stage.versus .s-time b { font-size: var(--fs-strong); }
+#stage.touch.versus .s-time b { font-size: var(--fs-strong); }
+/* 1P / 2P 标签也跟着瘦一点，把宽度让给数字 */
+#stage.versus .p-tag { padding: 2px 8px; font-size: var(--fs-note); }
+/* 双人时不显示「最高分」（那是单人长线目标） */
+#stage.versus .s-best { display: none; }
+/* 单人手机端也收掉「最高分」：第三阶段的「今日任务」条画在黑板中间那条空位上，
+ * 顶部信息条一宽就会压过去。最高分是长线目标，结算页还会再显示一次，
+ * 挪走它对局中不丢任何信息，却能把信息条宽度让出 60 多像素。 */
+#stage.touch:not(.versus) .s-best { display: none; }
+
+/* 1P / 2P 标签只在双人模式出现 */
+.p-tag {
+  display: none;
+  font-size: var(--fs-label);
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #FFE0D0;
+  color: #A93C14;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .14);
+  transform: rotate(-2deg);
+}
+#stage.versus .p-tag { display: inline-block; }
+.hud-p2 .p-tag { background: #D4F3EF; color: #0B6B62; transform: rotate(2deg); }
+
+/* 2P 的贴纸换成冷色，跟 1P 一眼区分 */
+.hud-p2 .s-score { background: linear-gradient(180deg, #DCF7F3, #B7EBE3); transform: rotate(1.6deg); }
+.hud-p2 .s-score b { color: #0B6B62; }
+.hud-p2 .s-score b.n2 { color: #1565C0; }
+.hud-p2 .s-combo { background: linear-gradient(180deg, #DFF6F2, #BEEAE3); transform: rotate(2deg); }
+.hud-p2 .s-combo b { color: #0B6B62; }
+
+#stage.touch .hud-p2 { top: 14px; right: 16px; gap: 5px; }
+
+#stage.touch .round-btn {
+  width: 54px;
+  height: 54px;
+  font-size: var(--fs-num-2xl);
+  right: 16px;
+  bottom: 16px;
+}
+
+.hint-touch { display: none; }
+#stage.touch .hint-kb { display: none; }
+#stage.touch .hint-touch { display: block; }
+
+/* ---------- 手机竖屏提示 ---------- */
+
+#rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 243, 220, .94);
+  text-align: center;
+  padding: 24px;
+}
+
+#rotate-hint.show { display: flex; }
+
+#rotate-hint .rh-card {
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 6px 7px 0 rgba(46, 42, 38, .18);
+  padding: 26px 30px;
+  max-width: 320px;
+}
+
+#rotate-hint .rh-ico {
+  font-size: var(--fs-h-vs);
+  line-height: 1;
+  display: block;
+  margin-bottom: 10px;
+  animation: rotateTip 1.8s ease-in-out infinite;
+}
+
+@keyframes rotateTip {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(90deg); }
+}
+
+#rotate-hint .rh-title {
+  font-size: var(--fs-num-l);
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+}
+
+#rotate-hint .rh-sub {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+  line-height: 1.7;
+}
+
+#rotate-hint .rh-btn {
+  font-family: inherit;
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: 3px solid var(--line);
+  background: linear-gradient(180deg, #FFF3D0, #FFD24D);
+  box-shadow: 0 5px 0 #C98A00;
+  font-size: var(--fs-num);
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #4A2A00;
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+}
+#rotate-hint .rh-btn:hover { transform: translateY(-2px); }
+#rotate-hint .rh-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #C98A00; }
+
+#rotate-hint .rh-tip {
+  font-size: var(--fs-note);
+  font-weight: 700;
+  color: var(--ink-2);
+  margin: 12px 0 0;
+  line-height: 1.7;
+  opacity: .85;
+}
+
+#rotate-hint .rh-tip.warn { color: #B71C1C; opacity: 1; }
+
+/* 内部所有内容按 1040×742 设计，整体等比缩放到 #stage 的尺寸 */
+#frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1040px;
+  height: 742px;
+  transform-origin: top left;
+  transform: scale(var(--fit, 1));
+}
+
+#game {
+  display: block;
+  width: 1040px;
+  height: 742px;
+}
+
+.hidden { display: none !important; }
+
+/* ==================== HUD 贴纸 ==================== */
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* V1.5 第二阶段：HUD 全部改成「顶部一行横排」。
+ * 座位区从画布 y = WALL_T 开始（标准 104 / 紧凑 84），而画布底部没有留白，
+ * 所以 HUD 只有顶部墙面这一条可用带。原来的竖排堆叠（分数/座位/连击/技能）
+ * 会一直堆到 y=157，直接压住最上面两排座位 —— 现在一行解决，底边不超过 60。 */
+.hud-tl { position: absolute; top: 12px; left: 14px; display: flex; flex-direction: row; align-items: center; gap: 6px; }
+.hud-tr { position: absolute; top: 12px; right: 14px; display: flex; flex-direction: row; align-items: center; gap: 6px; }
+
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #FFFFFF;
+  border: 2.5px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 3px 3px 0 rgba(46, 42, 38, .18);
+  font-size: var(--fs-lead);
+  font-weight: 800;
+  letter-spacing: .3px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.sticker .ico { font-size: var(--fs-strong); line-height: 1; }
+.sticker b { font-size: var(--fs-num-l); font-weight: 900; font-variant-numeric: tabular-nums; }
+.sticker .unit { font-size: var(--fs-label); color: var(--ink-2); margin-left: -2px; }
+/* 说明性文字（手机上会整条隐藏，见 .touch 规则） */
+.sticker .lbl { font-size: var(--fs-label); font-weight: 700; color: var(--ink-2); }
+/* 分数与座位合并成一张贴纸后的分隔点 */
+.sticker .sep { color: rgba(46, 42, 38, .32); font-size: var(--fs-body); margin: 0 1px; }
+
+.s-score { background: linear-gradient(180deg, #FFF3D0, #FFE49A); transform: rotate(-1.6deg); }
+.s-score b { color: #D9480F; }
+/* 同一张贴纸里的座位数换冷色，两个数字一眼分得开 */
+.s-score b.n2 { color: #1565C0; }
+
+/* V1.5：普通占座不再往画面上堆 +10 飘字，反馈全部落到 HUD ——
+ * 加分时记分牌弹一下，让玩家「用余光也能确认自己刚抢到了」。 */
+@keyframes scorePop {
+  0%   { transform: rotate(-1.6deg) scale(1); }
+  32%  { transform: rotate(-1.6deg) scale(1.15); }
+  100% { transform: rotate(-1.6deg) scale(1); }
+}
+.s-score.bump { animation: scorePop .26s cubic-bezier(.2, 1.5, .4, 1); }
+.s-score.bump b { color: #B33A00; }
+
+/* 2P 的记分牌本身是反方向歪的，动画得跟着换一套，否则会突然「正过来」 */
+@keyframes scorePop2 {
+  0%   { transform: rotate(1.6deg) scale(1); }
+  32%  { transform: rotate(1.6deg) scale(1.15); }
+  100% { transform: rotate(1.6deg) scale(1); }
+}
+.hud-p2 .s-score.bump { animation-name: scorePop2; }
+
+.s-combo {
+  background: linear-gradient(180deg, #FFE9F3, #FFC9E0);
+  transform: rotate(-2deg);
+  animation: comboPop .32s cubic-bezier(.2, 1.6, .4, 1);
+}
+.s-combo b { color: #C2185B; }
+
+.s-time { background: linear-gradient(180deg, #FFF0E4, #FFD9C0); transform: rotate(1.4deg); }
+.s-time b { color: #C2410C; font-size: var(--fs-num-xl); }
+.s-time.warn { background: linear-gradient(180deg, #FFD9D9, #FFB4B4); animation: pulseWarn .8s infinite; }
+.s-time.warn b { color: #B71C1C; }
+
+/* V1.6 第三阶段（手册 §十一）：双人最后 15 秒，时间数字更突出。
+   刻意**不动 font-size** —— 字号已经被 #stage.versus / #stage.touch.versus
+   那几档带 ID 的规则覆盖过，在这里改字号就得一路堆选择器权重。
+   改用「底色 + 脉冲幅度 + 数字颜色」表达，这三样没有别的规则在抢。 */
+.s-time.final { background: linear-gradient(180deg, #FFE3AE, #FFB74D); animation: pulseFinal .5s infinite; }
+.s-time.final b { color: #8E0000; }
+
+
+/* 最高分：从底部左下角搬进顶部信息条 —— 原来那位置会压住最后一排座位，
+ * 也会和触摸端的左下摇杆打架。 */
+.s-best { background: linear-gradient(180deg, #F0EBFF, #DCD2FF); transform: rotate(-1deg); font-size: var(--fs-label); padding: 5px 11px; }
+.s-best b { font-size: var(--fs-lead-l); color: #5B3FBF; }
+
+@keyframes comboPop { 0% { transform: rotate(-2deg) scale(.5); } 100% { transform: rotate(-2deg) scale(1); } }
+@keyframes pulseWarn { 0%, 100% { transform: rotate(1.4deg) scale(1); } 50% { transform: rotate(1.4deg) scale(1.07); } }
+@keyframes pulseFinal { 0%, 100% { transform: rotate(1.4deg) scale(1.03); } 50% { transform: rotate(1.4deg) scale(1.11); } }
+
+/* ==================== 音效按钮 ==================== */
+
+.round-btn {
+  position: absolute;
+  z-index: 40;
+  right: 14px;
+  bottom: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2.5px solid var(--line);
+  background: #FFFFFF;
+  box-shadow: 3px 3px 0 rgba(46, 42, 38, .18);
+  font-size: var(--fs-num-l);
+  cursor: pointer;
+  transition: transform .12s ease, background .15s ease;
+  line-height: 1;
+  padding: 0;
+}
+.round-btn:hover { transform: translateY(-2px) rotate(-6deg); background: #FFF6E0; }
+.round-btn:active { transform: translateY(1px); box-shadow: 1px 1px 0 rgba(46, 42, 38, .18); }
+.round-btn.off { background: #EFE9DD; color: #9A9184; filter: grayscale(1); }
+
+/* ==================== 遮罩层 ==================== */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(255, 243, 220, .55);
+  -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
+  backdrop-filter: blur(2.5px) saturate(1.05);
+  animation: fadeIn .28s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.card {
+  position: relative;
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 26px;
+  box-shadow: 7px 8px 0 rgba(46, 42, 38, .2), 0 20px 40px rgba(60, 44, 20, .16);
+  padding: 30px 42px 26px;
+  text-align: center;
+  animation: cardIn .34s cubic-bezier(.2, 1.4, .4, 1);
+}
+
+@keyframes cardIn {
+  from { transform: scale(.86) rotate(-1.5deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ---------- 开始卡片 ---------- */
+
+.start-card { width: 660px; }
+.start-card::before,
+.start-card::after {
+  content: "";
+  position: absolute;
+  width: 58px;
+  height: 20px;
+  background: rgba(255, 201, 60, .78);
+  border: 1px solid rgba(46, 42, 38, .16);
+  top: -11px;
+}
+.start-card::before { left: 34px; transform: rotate(-7deg); }
+.start-card::after { right: 34px; transform: rotate(6deg); background: rgba(46, 196, 182, .62); }
+
+/* ---------- 玩法规则入口（开始卡右上角的小贴纸） ----------
+ * 刻意贴在**卡片**的角上而不是屏幕四角：紧凑版画布只有 692×468，开始卡宽 620，
+ * 左右各剩 36px —— 贴屏幕角会压到卡片上。贴卡片角则两种布局自动跟着卡片走。 */
+.rules-btn {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px 6px;
+  border: 2.5px solid var(--line);
+  border-radius: 999px;
+  background: #FFFFFF;
+  box-shadow: 3px 3px 0 rgba(46, 42, 38, .18);
+  font-family: var(--font);
+  font-size: var(--fs-label);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: .5px;
+  line-height: 1;
+  cursor: pointer;
+  transform: rotate(-2deg);
+  transition: transform .12s ease, background .15s ease, box-shadow .12s ease;
+}
+.rules-btn .rb-ico { font-size: var(--fs-lead); line-height: 1; }
+.rules-btn:hover { transform: rotate(-2deg) translateY(-2px); background: #FFF6E0; }
+.rules-btn:active { transform: rotate(-2deg) translateY(1px); box-shadow: 1px 1px 0 rgba(46, 42, 38, .18); }
+
+.tag-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+
+.tag {
+  font-size: var(--fs-label);
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #FFF0C4;
+  letter-spacing: .5px;
+}
+.tag:nth-child(2) { background: #D6F5F1; }
+.tag:nth-child(3) { background: #FFE0EC; }
+
+.title {
+  font-size: var(--fs-h-start);
+  font-weight: 900;
+  margin: 0 0 8px;
+  letter-spacing: 3px;
+  line-height: 1.05;
+  color: #FF6B35;
+  text-shadow:
+    3px 3px 0 #FFFFFF,
+    6px 6px 0 rgba(46, 42, 38, .85);
+  transform: rotate(-1.2deg);
+}
+
+.sub {
+  font-size: var(--fs-strong);
+  font-weight: 700;
+  color: var(--ink-2);
+  margin: 0 0 20px;
+  letter-spacing: .5px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #FFFFFF;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .14);
+}
+.lg i { font-style: normal; font-size: var(--fs-body-l); }
+.lg b { font-weight: 900; color: #C2410C; }
+.lg.bad { background: #FFE3E3; }
+.lg.bad b { color: #B71C1C; }
+
+.big-btn {
+  display: inline-block;
+  font-family: inherit;
+  font-size: var(--fs-btn);
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #4A2A00;
+  padding: 16px 46px;
+  border-radius: 20px;
+  border: 3px solid var(--line);
+  background: linear-gradient(180deg, #FFE07A, var(--yellow) 55%, var(--yellow-2));
+  box-shadow: 0 6px 0 #C98A00, 0 10px 18px rgba(180, 120, 0, .32);
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+  animation: breathe 1.5s ease-in-out infinite;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+.big-btn:hover { transform: translateY(-2px) scale(1.03); animation-play-state: paused; }
+.big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #C98A00; animation-play-state: paused; }
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1) rotate(-.6deg); }
+  50%      { transform: scale(1.045) rotate(.6deg); }
+}
+
+/* ---------- 模式选择 ---------- */
+
+.mode-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.mode-btn {
+  font-family: inherit;
+  flex: 1 1 0;
+  max-width: 250px;
+  padding: 13px 14px 12px;
+  border-radius: 18px;
+  border: 3px solid var(--line);
+  background: linear-gradient(180deg, #FFF3D0, #FFE49A);
+  box-shadow: 0 5px 0 #C98A00;
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mode-btn:hover { transform: translateY(-2px); }
+.mode-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #C98A00; }
+
+.mode-btn .mb-title {
+  font-size: var(--fs-num-xl);
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #4A2A00;
+}
+.mode-btn .mb-sub {
+  font-size: var(--fs-note);
+  font-weight: 700;
+  color: #8A6420;
+  letter-spacing: .3px;
+}
+
+.mode-btn.vs {
+  background: linear-gradient(180deg, #DCEBFF, #B7D8FF);
+  box-shadow: 0 5px 0 #2C6BC7;
+}
+.mode-btn.vs:hover { box-shadow: 0 5px 0 #2C6BC7; }
+.mode-btn.vs:active { box-shadow: 0 2px 0 #2C6BC7; }
+.mode-btn.vs .mb-title { color: #0C3A6B; }
+.mode-btn.vs .mb-sub { color: #2C5F96; }
+
+/* ---------- 镜头跟随开关（局部放大） ---------- */
+.zoom-row {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  margin: 8px 0 2px; flex-wrap: wrap;
+}
+.zoom-label { font-size: var(--fs-lead); font-weight: 800; color: #4A2A00; letter-spacing: 1px; }
+.zoom-note { font-size: var(--fs-note); color: #8A6420; font-weight: 700; }
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; flex: 0 0 auto; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: absolute; inset: 0; cursor: pointer; box-sizing: border-box;
+  background: #E4D3A8; border: 2px solid #C98A00; border-radius: 999px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.switch-track::before {
+  content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 1px;
+  background: #fff; border-radius: 50%; transition: transform .15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
+.switch input:checked + .switch-track { background: linear-gradient(180deg,#7FD17A,#4FA84A); border-color: #2F7A2C; }
+.switch input:checked + .switch-track::before { transform: translateX(20px); }
+#stage.compact .zoom-label { font-size: var(--fs-body); }
+#stage.compact .zoom-note { display: none; }
+
+/* ---------- 场景选择（V1.5 第五阶段：教室 / 图书馆 / 食堂） ---------- */
+.scene-row {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  margin: 8px 0 2px; flex-wrap: wrap;
+}
+.scene-tag { font-size: var(--fs-body-l); font-weight: 800; color: #4A2A00; letter-spacing: 1px; }
+.scene-btn {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 12px 7px; cursor: pointer;
+  background: #FBF3E2; border: 2.5px solid #E2CFA4; border-radius: 12px;
+  transition: transform .1s ease, border-color .15s ease, background .15s ease;
+}
+.scene-btn .sb-title { font-size: var(--fs-body-l); font-weight: 900; color: #6B4A10; letter-spacing: .5px; }
+.scene-btn .sb-sub { font-size: var(--fs-caption); font-weight: 700; color: #9A7A3C; }
+.scene-btn:hover { transform: translateY(-1px); }
+.scene-btn.on {
+  background: linear-gradient(180deg,#FFE9B8,#FFD97A);
+  border-color: #C98A00;
+  box-shadow: 0 2px 0 #C98A00;
+}
+.scene-btn.on .sb-title { color: #4A2A00; }
+.scene-btn.on .sb-sub { color: #7A5A18; }
+#stage.compact .scene-tag { display: none; }
+#stage.compact .scene-btn { padding: 4px 9px 5px; border-width: 2px; }
+#stage.compact .scene-btn .sb-sub { display: none; }
+
+/* ---------- 对战报告 ---------- */
+
+.vs-title { font-size: var(--fs-h-vs); }
+#screen-over.vs .over-card { width: 664px; }
+
+.vs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.vs-col {
+  border: 2.5px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 14px 12px;
+  box-shadow: 3px 3px 0 rgba(46, 42, 38, .14);
+  background: #FFF4D6;
+}
+#vs-col-1 { transform: rotate(-1deg); }
+#vs-col-2 { transform: rotate(1deg); background: #DCF7F3; }
+
+.vs-col .vs-name {
+  font-size: var(--fs-strong);
+  font-weight: 900;
+  letter-spacing: 3px;
+  margin-bottom: 7px;
+  color: #A93C14;
+}
+#vs-col-2 .vs-name { color: #0B6B62; }
+
+.vs-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--ink-2);
+  padding: 3px 0;
+  border-top: 1px dashed rgba(46, 42, 38, .16);
+}
+.vs-line:first-of-type { border-top: none; }
+.vs-line b {
+  font-size: var(--fs-num);
+  font-weight: 900;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 胜方高亮 */
+.vs-col.win {
+  box-shadow: 0 0 0 4px #FFC93C, 4px 4px 0 rgba(46, 42, 38, .16);
+  background: #FFF0BF;
+}
+.vs-col.win .vs-name::after {
+  content: " 👑";
+}
+
+.hint { font-size: var(--fs-body-l); font-weight: 700; color: var(--ink-2); margin: 18px 0 0; letter-spacing: .4px; }
+.tip { font-size: var(--fs-label); font-weight: 600; color: #A79A85; margin: 8px 0 0; }
+
+/* ==================== 玩法规则面板 ====================
+ * 由开始页右上角的「📖 玩法」打开。z-index 给到 45，
+ * 是为了盖住右下角那个 z-index:40 的音效圆钮 —— 规则页里不需要它。 */
+#screen-rules { z-index: 45; }
+
+.rules-card {
+  width: 640px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 32px 18px;
+  text-align: left;
+}
+
+.rules-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rules-title {
+  margin: 0;
+  font-size: var(--fs-num-xl);
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--coral-2);
+  text-shadow: 2px 2px 0 #FFFFFF, 4px 4px 0 rgba(46, 42, 38, .18);
+  transform: rotate(-1deg);
+}
+
+.rules-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2.5px solid var(--line);
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .18);
+  font-family: var(--font);
+  font-size: var(--fs-body-l);
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .12s ease, background .15s ease;
+}
+.rules-close:hover { background: #FFE0EC; transform: rotate(-90deg); }
+.rules-close:active { box-shadow: 1px 1px 0 rgba(46, 42, 38, .18); }
+
+.rules-sub {
+  margin: 4px 0 10px;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--ink-2);
+  letter-spacing: .5px;
+}
+
+/* 列表自己滚：紧凑版 468px 高，十条规则放不下，但卡片本身绝不能超出画布
+   （#stage 是 overflow:hidden，超出部分会被静默剪掉、连滚动条都点不到）。 */
+/* 列表外面套一层：滚动提示 .rules-more 要绝对定位在「列表可视区」的底部，
+   所以需要一个 position:relative 的、高度等于可视区的容器。 */
+.rules-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.rules-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rules-list::-webkit-scrollbar { width: 7px; }
+.rules-list::-webkit-scrollbar-track { background: rgba(46, 42, 38, .07); border-radius: 999px; }
+.rules-list::-webkit-scrollbar-thumb { background: rgba(46, 42, 38, .26); border-radius: 999px; }
+
+/* 「向下还有更多 ↓」：紧凑版装不下时列表自己滚，但 Chrome 的滚动条是**覆盖式**的
+   （不占宽度、平时不显示），光看截图根本发现不了还能往下滚。
+   由 syncRulesMore() 按「还有没有更多」显隐 —— 滚到底就消失。 */
+.rules-more {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 1px;
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--ink-2);
+  letter-spacing: .5px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0), var(--paper) 62%);
+}
+
+.rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px 7px;
+  border: 2px solid rgba(46, 42, 38, .16);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+.rule .r-ico { flex: none; font-size: var(--fs-lead-l); line-height: 1.25; }
+.rule .r-txt {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.rule .r-txt b {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: var(--fs-body);
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: .5px;
+}
+
+/* 阶段 8（2026-10-20 用户反馈 M「不要精简，越详细越好，可适当加图片」）：
+   规则页允许每条配一张示意图。`.rule` 改成可换行，图独占一整行 ——
+   否则图会和文字抢宽度，把正文挤成一条窄柱（600px 紧凑版尤其明显）。
+   图本身用内联 SVG：不引外部资源、不增加请求、缩放不糊。 */
+.rule { flex-wrap: wrap; }
+.rule .r-fig {
+  flex: 0 0 100%;
+  margin: 6px 0 0;
+}
+.rule .r-fig svg {
+  display: block;
+  width: 100%;
+  max-width: 430px;
+  height: auto;
+  font-family: inherit;
+}
+.rule .r-fig svg text { font-family: inherit; }
+
+.rules-ok { margin-top: 12px; align-self: center; }
+
+/* ---------- 倒计时 ---------- */
+
+.count-wrap { text-align: center; }
+
+.count-title {
+  font-size: var(--fs-stat);
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #FFFFFF;
+  text-shadow: 2px 2px 0 var(--ink), 5px 5px 0 rgba(46, 42, 38, .25);
+  margin-bottom: 6px;
+  transform: rotate(-1.4deg);
+}
+
+.count-num {
+  font-size: var(--fs-count);
+  font-weight: 900;
+  line-height: 1;
+  color: #FF6B35;
+  text-shadow:
+    4px 4px 0 #FFFFFF,
+    9px 9px 0 rgba(46, 42, 38, .85);
+  animation: countPop .5s cubic-bezier(.2, 1.7, .4, 1);
+}
+
+.count-num.go {
+  font-size: var(--fs-count-go);
+  color: #FFC93C;
+  letter-spacing: 6px;
+  transform: rotate(-3deg);
+  text-shadow: 4px 4px 0 #FFFFFF, 10px 10px 0 #EE5A31, 14px 14px 0 rgba(46, 42, 38, .8);
+}
+
+@keyframes countPop {
+  0%   { transform: scale(2.1) rotate(9deg); opacity: 0; }
+  55%  { transform: scale(.94) rotate(-3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ---------- 结算卡片 ---------- */
+
+.over-card { width: 620px; padding-top: 26px; }
+
+.over-reason {
+  display: inline-block;
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: #B71C1C;
+  background: #FFE0E0;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 16px;
+  margin-bottom: 12px;
+}
+
+.over-title {
+  font-size: var(--fs-h-over);
+  font-weight: 900;
+  letter-spacing: 4px;
+  margin: 0 0 4px;
+  color: #EE5A31;
+  text-shadow: 3px 3px 0 #FFFFFF, 7px 7px 0 rgba(46, 42, 38, .85);
+  transform: rotate(-1.6deg);
+}
+
+.over-sub {
+  font-size: var(--fs-num);
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: var(--ink);
+  margin: 0 0 18px;
+}
+.over-sub::before, .over-sub::after { content: "·"; margin: 0 10px; color: var(--yellow-2); }
+
+.stats {
+  display: grid;
+  /* V2 第八/九节：结算报告加了「封锁同学」，四格 → 五格。
+     列数变了但**仍是一行**，所以高度不变，只是每格窄一点 —— 卡片的垂直余量很紧，
+     动列数比动行数安全得多。 */
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  background: #FFFFFF;
+  border: 2.5px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 6px 8px;
+  box-shadow: 3px 3px 0 rgba(46, 42, 38, .14);
+}
+.stat:nth-child(1) { transform: rotate(-1.5deg); background: #FFF4D6; }
+.stat:nth-child(2) { transform: rotate(1.2deg); background: #E2F4FF; }
+.stat:nth-child(3) { transform: rotate(-1deg); background: #FFE7F0; }
+.stat:nth-child(4) { transform: rotate(1.5deg); background: #E9E3FF; }
+.stat:nth-child(5) { transform: rotate(-1.3deg); background: #E4F7EC; }
+
+.stat-n { display: block; font-size: var(--fs-stat); font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-l { display: block; font-size: var(--fs-label); font-weight: 700; color: var(--ink-2); margin-top: 3px; }
+
+.total {
+  font-size: var(--fs-num);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+.total b {
+  font-size: var(--fs-total);
+  font-weight: 900;
+  color: #D9480F;
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.over-eval {
+  font-size: var(--fs-lead-l);
+  font-weight: 800;
+  color: #4A3F2E;
+  background: #FFF6D9;
+  border: 2.5px dashed #E0B84A;
+  border-radius: 16px;
+  padding: 13px 18px;
+  margin-bottom: 12px;
+  line-height: 1.55;
+}
+
+/* ---------- 结算：本局任务清单（第三阶段） ---------- */
+
+.over-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.over-tasks.hidden { display: none; }
+
+.ot-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-body-l);
+  font-weight: 800;
+  color: var(--ink-2);
+  background: #F4F1E7;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 12px;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .10);
+}
+.ot-row .ot-ico { font-size: var(--fs-lead-l); line-height: 1; }
+.ot-row .ot-name { flex: 1; }
+.ot-row .ot-res { font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
+.ot-row.done { background: #E6F8E9; border-color: #2E9E52; color: #1B7A3E; }
+.ot-row.done .ot-res { color: #1B7A3E; }
+
+.over-titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.over-titles.hidden { display: none; }
+.over-titles .tt {
+  font-size: var(--fs-body);
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #7B4B00;
+  background: linear-gradient(180deg, #FFF0BF, #FFE08A);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 13px;
+  transform: rotate(-1.4deg);
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .14);
+}
+
+/* ---------- 成就行（V2 手册第八节） ----------
+ * 刻意只占**一行**：要么列出本局新解锁的成就胶囊，要么显示「离最近的那个还差多少」
+ * 的进度提示。二选一，不叠加。没有内容时整行 display:none，不占高度。
+ * 结算卡的垂直余量很紧（手机只剩 10px），所以这行必须做成可隐藏的单行。 */
+.over-ach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.over-ach.hidden { display: none; }
+.over-ach .ac-head {
+  font-size: var(--fs-label);
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #6B4A00;
+}
+.over-ach .ac {
+  font-size: var(--fs-label);
+  font-weight: 900;
+  letter-spacing: .5px;
+  color: #5A3A00;
+  background: linear-gradient(180deg, #FFE9A8, #FFD35C);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 11px;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .14);
+  transform: rotate(1.2deg);
+}
+.over-ach .ac-hint {
+  font-size: var(--fs-note);
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: var(--ink-2);
+}
+.over-ach .ac-hint b { color: #7B4B00; }
+
+.over-best {
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--ink-2);
+  margin-bottom: 18px;
+  letter-spacing: .5px;
+}
+.over-best .newrec { color: #D9480F; font-size: var(--fs-lead); }
+
+/* ---------- 第九阶段 P1-2：本局高光 ----------
+ * 文档 §十二「突出一个本局高光」+ §十三「每局只记录 1~2 个」。
+ * 结算卡的高度是硬约束（标准版只剩十几像素余量），所以这里做成**单行内联**：
+ *   ✨ 本局高光  连续抢下 4 个特殊座位 · 打出一波 6 连抢
+ * 一行吃掉全部信息，比「标题 + 正文 + 副行」三行省 40 多像素。 */
+.over-highlight {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin-bottom: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 2px dashed rgba(180, 120, 0, .42);
+  background: rgba(255, 240, 190, .60);
+  color: #4A2A00;
+  font-weight: 900;
+  letter-spacing: .5px;
+}
+.over-highlight.hidden { display: none; }
+.over-highlight .hl-hd {
+  font-size: var(--fs-note);
+  letter-spacing: 2px;
+  color: #B4760A;
+  flex: none;
+}
+.over-highlight .hl-main { font-size: var(--fs-strong); }
+.over-highlight .hl-sub { font-size: var(--fs-body); color: rgba(106, 74, 0, .80); }
+.over-highlight .hl-sub::before { content: '·'; margin-right: 6px; color: rgba(180, 120, 0, .7); }
+
+/* ---------- 第九阶段 P1-2：结算页两个按钮并排 ----------
+ * 文档 §十二 要求「只保留【再来一局】【换个角色】两个按钮」。
+ * 并排而不是上下堆，是为了**不额外增加卡片高度** —— 标准版结算卡只剩十几像素余量。 */
+.over-btns {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.big-btn.ghost {
+  color: #5A4520;
+  background: linear-gradient(180deg, #FFFFFF, #F4EBDA 60%, #E8DCC3);
+  box-shadow: 0 6px 0 #C9B48A, 0 10px 18px rgba(120, 100, 60, .20);
+  animation: none;
+}
+.big-btn.ghost:hover { transform: translateY(-2px) scale(1.03); animation: none; }
+.big-btn.ghost:active { transform: translateY(4px); box-shadow: 0 2px 0 #C9B48A; animation: none; }
+
+.over-card .big-btn { font-size: var(--fs-num-2xl); padding: 14px 40px; }
+
+/* ---------- 结算卡：标准版温和瘦身（V1.5 第三阶段，V2 再收一档） ----------
+ * 第三阶段往结算卡里加了「本局任务清单（3 行）+ 称号胶囊」，卡片从 589px 涨到 759px，
+ * 而标准版画布只有 742 高 —— 上下各被剪掉 8px。这里先把几处最占地方的地方收一档：
+ * 大标题、卡片上内边距、评价框、最高分行距、任务行间距。信息一条不动。
+ *
+ * V2 第八/九节又加了「封锁同学」第 5 格（改列数，不增高）和成就行（+22px），
+ * 卡片顶到 741/742 —— 只剩 1px，风一吹就剪。所以这几处再各收 2~4px，把余量拉回 10px 以上。 */
+#screen-over .over-card { padding-top: 14px; }
+#screen-over .over-title { font-size: var(--fs-total); }
+#screen-over .over-sub { margin-bottom: 9px; }
+#screen-over .over-tasks { gap: 3px; margin-bottom: 6px; }
+#screen-over .over-titles { margin-bottom: 6px; }
+#screen-over .over-ach { margin-bottom: 5px; }
+#screen-over .over-eval { padding: 8px 16px; margin-bottom: 7px; }
+#screen-over .over-best { margin-bottom: 4px; }
+#screen-over .over-card .big-btn { padding: 12px 36px; }
+/* 第九阶段 P1-2 起，上面这几档又各收了一点、总分数字也从 44 收到 40 ——
+   全是给「本局高光」那 38px 腾地方。标准版画布 742，瘦身前卡片 771 会被上下各剪 14px。 */
+#screen-over .total b { font-size: var(--fs-total-trim); }
+
+/* ---------- 结算 / 开始卡片：紧凑版瘦身（V1.5 第三阶段） ----------
+ * 为什么需要：紧凑版画布只有 692×468，而结算卡在「4 个数据格 + 总分 + 3 条任务
+ * + 称号胶囊 + 评价 + 最高分 + 按钮」全展开时有 641px 高（第三阶段新增的任务清单
+ * 就占了 113px）。卡片是垂直居中的，超出的部分上下各被 #stage 的 overflow:hidden
+ * 剪掉，「再抢一节」按钮底部会落在 505px —— 手机横屏下按钮被切掉 37px，点不到。
+ *
+ * 处理办法不是「把内容藏起来」，而是整卡等比瘦身：所有字号、内边距、间距同步收一档，
+ * 信息一条不少。瘦身后卡片 ≈ 400px，四种版式都留有余量。
+ * 只在 #stage.compact 下生效，桌面标准版（画布 742 高）维持原样。
+ *
+ * 另外补一道保险：#screen-over 允许纵向滚动，并用 margin:auto 代替 flex 居中 ——
+ * 万一以后又加了内容（比如第四阶段角色称号更多），也只会滚动，不会再把顶部剪掉。 */
+#stage.compact #screen-over {
+  padding: 4px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#stage.compact #screen-over .over-card { margin: auto; }
+
+#stage.compact .over-card { width: 620px; padding: 2px 30px 2px; }
+
+#stage.compact .over-reason {
+  font-size: var(--fs-note);
+  padding: 3px 12px;
+  margin-bottom: 5px;
+}
+
+#stage.compact .over-title { font-size: var(--fs-num-xl); letter-spacing: 2px; margin: 0 0 2px; }
+#stage.compact .over-title.vs-title { font-size: var(--fs-num-xl); }
+
+#stage.compact .over-sub { font-size: var(--fs-body-l); letter-spacing: 3px; margin: 0 0 3px; }
+#stage.compact .over-sub::before, #stage.compact .over-sub::after { margin: 0 7px; }
+
+#stage.compact .stats { gap: 7px; margin-bottom: 3px; }
+#stage.compact .stat { border-width: 2px; border-radius: 10px; padding: 6px 4px 5px; }
+#stage.compact .stat-n { font-size: var(--fs-num); }
+#stage.compact .stat-l { font-size: var(--fs-caption); margin-top: 1px; }
+
+#stage.compact .total { font-size: var(--fs-body-l); letter-spacing: 1px; margin-bottom: 3px; }
+#stage.compact .total b { font-size: var(--fs-num-2xl); margin-left: 6px; }
+
+#stage.compact .over-tasks { gap: 2px; margin-bottom: 3px; }
+#stage.compact .ot-row {
+  gap: 7px;
+  font-size: var(--fs-label);
+  border-width: 2px;
+  border-radius: 9px;
+  padding: 2px 9px;
+}
+#stage.compact .ot-row .ot-ico { font-size: var(--fs-body); }
+#stage.compact .ot-row .ot-res { font-size: var(--fs-note); }
+
+#stage.compact .over-titles { gap: 5px; margin-bottom: 3px; }
+#stage.compact .over-titles .tt { font-size: var(--fs-note); padding: 2px 10px; }
+#stage.compact .over-ach { gap: 4px; margin-bottom: 2px; }
+#stage.compact .over-ach .ac-head { font-size: var(--fs-caption); letter-spacing: .5px; }
+#stage.compact .over-ach .ac { font-size: var(--fs-caption); padding: 2px 8px; }
+#stage.compact .over-ach .ac-hint { font-size: var(--fs-caption); }
+
+#stage.compact .over-eval {
+  font-size: var(--fs-label);
+  line-height: 1.4;
+  border-width: 2px;
+  border-radius: 12px;
+  padding: 3px 12px;
+  margin-bottom: 2px;
+}
+
+#stage.compact .over-best { font-size: var(--fs-note); margin-bottom: 2px; }
+#stage.compact .over-best .newrec { font-size: var(--fs-body); }
+
+/* 第九阶段 P1-2：紧凑版（692×468）里高光与双按钮再收一档 */
+#stage.compact .over-highlight { padding: 3px 10px; margin-bottom: 3px; gap: 0 6px; }
+#stage.compact .over-highlight .hl-hd { font-size: var(--fs-caption); letter-spacing: 1px; }
+#stage.compact .over-highlight .hl-main { font-size: var(--fs-body); }
+#stage.compact .over-highlight .hl-sub { font-size: var(--fs-note); }
+#stage.compact .over-btns { gap: 10px; }
+
+#stage.compact .over-card .big-btn { font-size: var(--fs-strong); padding: 6px 26px; }
+#stage.compact .over-card .tip { font-size: var(--fs-caption); margin-top: 2px; }
+
+/* 双人报告同样瘦一档：两列各 5 行，展开后也会顶出 468 */
+#stage.compact .vs-grid { gap: 8px; margin-bottom: 8px; }
+#stage.compact .vs-col { padding: 7px 10px 8px; border-width: 2px; border-radius: 12px; }
+#stage.compact .vs-col .vs-name { font-size: var(--fs-body-l); letter-spacing: 2px; margin-bottom: 4px; }
+#stage.compact .vs-line { font-size: var(--fs-note); padding: 2px 0; }
+#stage.compact .vs-line b { font-size: var(--fs-lead); }
+
+/* 开始卡片在紧凑版里也要装得下。
+ * ⚠️ 2026-09-20 加了「场景选择行」之后，这里必须再瘦一档 ——
+ *    紧凑版画布只有 468 高，多一行就是 +43px，直接上下各剪 26px（卡片体检抓到）。
+ *    瘦身原则：压 padding / margin / 字号，**不删任何信息行**。 */
+#stage.compact .start-card { width: 620px; padding: 10px 30px 9px; }
+#stage.compact .start-card .tag-row { gap: 6px; margin-bottom: 5px; }
+#stage.compact .start-card .tag { font-size: var(--fs-caption); padding: 2px 9px; }
+#stage.compact .title { font-size: var(--fs-stat); letter-spacing: 2px; margin-bottom: 2px; }
+#stage.compact .sub { font-size: var(--fs-label); margin-bottom: 6px; }
+#stage.compact .legend { gap: 5px; margin-bottom: 6px; }
+#stage.compact .lg { font-size: var(--fs-caption); padding: 2px 7px; }
+#stage.compact .lg i { font-size: var(--fs-note); }
+#stage.compact .mode-row { gap: 10px; margin-bottom: 5px; }
+#stage.compact .mode-btn { padding: 6px 12px 7px; border-width: 2.5px; gap: 1px; }
+#stage.compact .mode-btn .mb-title { font-size: var(--fs-strong); }
+#stage.compact .mode-btn .mb-sub { font-size: var(--fs-caption); margin-top: 1px; }
+#stage.compact .role-area { gap: 4px; margin-bottom: 5px; }
+#stage.compact .role-card { padding: 3px 3px 4px; border-width: 2px; }
+#stage.compact .rc-ico { font-size: var(--fs-body-l); }
+#stage.compact .rc-name { font-size: var(--fs-caption); }
+#stage.compact .rc-desc { font-size: var(--fs-micro); }
+#stage.compact .zoom-row { margin: 4px 0 1px; }
+#stage.compact .scene-row { margin: 4px 0 1px; }
+#stage.compact .start-card .big-btn { font-size: var(--fs-num); padding: 7px 30px; }
+#stage.compact .start-card .hint { font-size: var(--fs-note); margin-top: 4px; }
+#stage.compact .start-card .tip { font-size: var(--fs-caption); margin-top: 3px; }
+#stage.compact .rules-btn { top: 8px; right: 10px; padding: 4px 9px 5px; border-width: 2px; box-shadow: 2px 2px 0 rgba(46, 42, 38, .18); }
+#stage.compact .rules-btn .rb-ico { font-size: var(--fs-label); }
+#stage.compact .rules-card { width: 600px; padding: 12px 22px 10px; }
+#stage.compact .rules-title { font-size: var(--fs-strong); letter-spacing: 1px; }
+#stage.compact .rules-close { width: 26px; height: 26px; font-size: var(--fs-label); border-width: 2px; }
+#stage.compact .rules-sub { font-size: var(--fs-caption); margin: 2px 0 6px; }
+#stage.compact .rules-list { gap: 4px; }
+#stage.compact .rules-more { height: 22px; }
+#stage.compact .rule { padding: 4px 8px 5px; gap: 6px; border-radius: 10px; }
+#stage.compact .rule .r-ico { font-size: var(--fs-body); }
+#stage.compact .rule .r-txt { font-size: var(--fs-caption); line-height: 1.35; }
+#stage.compact .rule .r-txt b { font-size: var(--fs-note); margin-right: 4px; }
+#stage.compact .rules-ok { margin-top: 7px; font-size: var(--fs-strong); padding: 6px 26px; letter-spacing: 1px; }
+
+/* ---------- 角色选择 ---------- */
+
+.role-area {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.role-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.rl-tag {
+  flex: none;
+  width: 56px;
+  text-align: right;
+  font-size: var(--fs-label);
+  font-weight: 900;
+  color: var(--ink-2);
+  letter-spacing: .5px;
+}
+
+.role-row { display: flex; gap: 7px; flex: 1 1 0; }
+
+.role-card {
+  font-family: inherit;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 3px 6px;
+  border-radius: 13px;
+  border: 2.5px solid var(--line);
+  background: #FFFDF4;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .12);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transition: transform .1s ease, box-shadow .1s ease;
+}
+.role-card:hover { transform: translateY(-2px); }
+.role-card:active { transform: translateY(1px); }
+
+.role-card.on {
+  background: linear-gradient(180deg, #FFF3D0, #FFE49A);
+  box-shadow: 0 0 0 3px #FFC93C, 2px 2px 0 rgba(46, 42, 38, .12);
+}
+
+.rc-ico { font-size: var(--fs-num); line-height: 1; }
+.rc-name { font-size: var(--fs-label); font-weight: 900; color: var(--ink); letter-spacing: .5px; }
+/* 第四阶段起描述是「定位 · 怎么玩」，比原来的「前排 +30%」长不少 ——
+ * 加一层溢出保护：卡片再窄也只是省略号，不会把卡片撑破。 */
+.rc-desc {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 技能栏 ---------- */
+
+.skill-bar {
+  display: flex;
+  gap: 6px;
+}
+/* .hud-p2 整行已经是 row-reverse（镜像 1P），技能栏内部保持正常顺序即可 */
+.skill-bar.p2 { flex-direction: row; }
+
+.skill {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 13px;
+  border: 2.5px solid var(--line);
+  background: linear-gradient(180deg, #FFFDF4, #FFF0C8);
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .16);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .08s ease;
+  overflow: hidden;
+}
+.skill:active { transform: translateY(2px); }
+.skill .sk-ico { font-size: var(--fs-num-xl); line-height: 1; }
+
+.skill .sk-key {
+  position: absolute;
+  right: 4px;
+  bottom: 1px;
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  color: rgba(46, 42, 38, .42);
+  pointer-events: none;
+}
+
+.skill .sk-cd {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-strong);
+  font-weight: 900;
+  color: #FFFFFF;
+  background: rgba(46, 42, 38, .58);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.skill .sk-cd:empty { display: none; }
+.skill.cooling { filter: grayscale(.65); }
+.skill.cooling .sk-ico { opacity: .35; }
+
+/* 2P 的技能栏用青色描边，跟场上角色对应 */
+.hud-p2 .skill { background: linear-gradient(180deg, #F2FDFB, #D4F3EF); }
+
+#stage.touch .skill { width: 54px; height: 54px; border-radius: 15px; }
+#stage.touch .skill .sk-ico { font-size: var(--fs-btn); }
+
+/* ---------- 邀请好友（联机） ---------- */
+
+.vs-sub { display: flex; gap: 8px; margin-bottom: 12px; }
+.vs-sub.hidden { display: none; }
+
+.vs-opt {
+  font-family: inherit;
+  flex: 1 1 0;
+  padding: 9px 6px;
+  border-radius: 12px;
+  border: 2.5px solid var(--line);
+  background: #FFFDF4;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .12);
+  cursor: pointer;
+  font-size: var(--fs-label);
+  font-weight: 900;
+  letter-spacing: .5px;
+  color: var(--ink);
+  transition: transform .1s ease;
+}
+.vs-opt:hover { transform: translateY(-2px); }
+.vs-opt.on {
+  background: linear-gradient(180deg, #DCEBFF, #B7D8FF);
+  box-shadow: 0 0 0 3px #4D96FF, 2px 2px 0 rgba(46, 42, 38, .12);
+}
+
+.invite-area {
+  border: 2.5px dashed rgba(46, 42, 38, .3);
+  border-radius: 15px;
+  padding: 13px 14px;
+  margin-bottom: 12px;
+  background: #FFF4D6;
+  text-align: left;
+}
+.invite-area.hidden { display: none; }
+
+.inv-line { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.inv-tag { font-size: var(--fs-label); font-weight: 900; color: var(--ink-2); letter-spacing: .5px; }
+.inv-code {
+  font-size: var(--fs-code); font-weight: 900; letter-spacing: 6px;
+  font-variant-numeric: tabular-nums;
+  color: #14508C;
+  background: #FFFFFF;
+  border: 2.5px solid var(--line);
+  border-radius: 10px;
+  padding: 2px 12px 2px 14px;
+  box-shadow: 2px 2px 0 rgba(46, 42, 38, .14);
+}
+
+.inv-link {
+  font-size: var(--fs-note); font-weight: 700; color: var(--ink-2);
+  word-break: break-all; line-height: 1.65; margin-bottom: 10px;
+}
+.inv-btn {
+  font-family: inherit;
+  display: block; width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2.5px solid var(--line);
+  background: linear-gradient(180deg, #FFFDF4, #FFE9A8);
+  box-shadow: 0 4px 0 #C98A00;
+  cursor: pointer;
+  font-size: var(--fs-body-l); font-weight: 900; letter-spacing: 1.5px;
+  color: #4A2A00;
+  transition: transform .1s ease, box-shadow .1s ease;
+}
+.inv-btn:hover { transform: translateY(-2px); }
+.inv-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #C98A00; }
+
+.net-status {
+  margin: 10px 0 0;
+  font-size: var(--fs-label); font-weight: 800;
+  color: #1B7A3E;
+  line-height: 1.7;
+  min-height: 20px;
+}
+.net-status.err { color: #B71C1C; }
+
+/* 访客只显示自己的（2P，右侧）摇杆，左侧是房主的 */
+#stage.net-guest #joystick { display: none; }
+
+/* 「你」标记 */
+.p-tag .you {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: #FFC93C;
+  color: #4A2A00;
+  font-size: var(--fs-caption);
+  letter-spacing: 0;
+}
+
+/* ==================== 暂停 / 退出 圆按钮（2026-10-10） ====================
+ * 与音效按钮同排（右下角横排），靠右起第三个。
+ * 三个按钮共用 .round-btn 的贴纸外观；这里只负责「排成一排」和「暂停态换图标」。
+ * ⚠️ 只改图标与位置，键位都走 game.js 的 onKeyDown（空格 / Esc）。 */
+#btn-pause { right: 128px; }
+#btn-quit  { right: 184px; }
+#stage.touch #btn-pause { right: 148px; }
+#stage.touch #btn-quit  { right: 214px; }
+
+/* 暂停中：按钮变「▶」并换成暖黄底，一眼看出点它能继续 */
+.round-btn.pausing { background: var(--yellow); transform: rotate(2deg); }
+.round-btn.pausing:hover { background: var(--yellow-2); }
+
+/* 暂停遮罩卡：比规则卡小一号，居中一坨，不滚 */
+.pause-card {
+  width: 420px;
+  padding: 26px 26px 20px;
+  text-align: center;
+}
+.pause-ico { font-size: 46px; line-height: 1; margin-bottom: 6px; }
+.pause-title {
+  font-size: var(--fs-total);
+  font-weight: 900;
+  color: var(--ink);
+  margin: 0 0 6px;
+  letter-spacing: 2px;
+  transform: rotate(-1.4deg);
+}
+.pause-sub {
+  font-size: var(--fs-body-l);
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+.pause-btns { display: flex; flex-direction: column; gap: 10px; }
+.pause-btns .big-btn { width: 100%; }
+
+/* 紧凑版：卡片收窄，圆按钮的横向间距也跟着收 */
+#stage.compact .pause-card { width: 340px; padding: 20px 20px 16px; }
+#stage.compact .pause-title { font-size: var(--fs-total-trim); }
+#stage.compact .pause-ico { font-size: 36px; }
+
